@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "string.h"
 #include "uv.h"
 #include "assert.h"
 #include "milo.h"
+#include <vector>
 
 // The backlog argument defines the maximum length to which the
 // queue of pending connections for sockfd may grow.  If a
@@ -17,46 +17,40 @@ static uv_loop_t *loop;
 static uv_tcp_t tcpServer;
 static milo::Parser *parser;
 
+struct milo_response
+{
+    const char *base;
+    char *method;
+    std::vector<std::string> header_values;
+    std::vector<std::string> header_names;
+};
+
 static intptr_t on_method(const milo::Parser *p, uintptr_t position, uintptr_t size)
 {
-    char *content = reinterpret_cast<char *>(malloc(sizeof(char) * 1000));
-
-    // Rust internall uses unsigned chars for string, so we need to cast.
-    strncpy(content, reinterpret_cast<const char *>(p->owner) + position, size);
-
-
-    printf("Method: %s\n", content);
-    free(content);
-
-    // All good, let's return.
+    milo_response *res = (milo_response *)p->owner;
+    res->method = reinterpret_cast<char *>(malloc(sizeof(char) * 1000));
+    strncpy(res->method, reinterpret_cast<const char *>(res->base) + position, size);
     return 0;
 };
 
 static intptr_t on_header_value(const milo::Parser *p, uintptr_t position, uintptr_t size)
 {
+
+    milo_response *res = (milo_response *)p->owner;
     char *content = reinterpret_cast<char *>(malloc(sizeof(char) * 1000));
-
-    // Rust internall uses unsigned chars for string, so we need to cast.
-    strncpy(content, reinterpret_cast<const char *>(p->owner) + position, size);
-
-    printf("Header value: %s\n", content);
+    strncpy(content, reinterpret_cast<const char *>(res->base) + position, size);
+    res->header_values.push_back(content);
     free(content);
-
-    // All good, let's return.
     return 0;
 };
 
 static intptr_t on_header_name(const milo::Parser *p, uintptr_t position, uintptr_t size)
 {
+    milo_response *res = (milo_response *)p->owner;
     char *content = reinterpret_cast<char *>(malloc(sizeof(char) * 1000));
-
-    // Rust internall uses unsigned chars for string, so we need to cast.
-    strncpy(content, reinterpret_cast<const char *>(p->owner) + position, size);
-
-    printf("Header name: %s\n", content);
+    strncpy(content, reinterpret_cast<const char *>(res->base) + position, size);
+    res->header_names.push_back(content);
     free(content);
-
-    // All good, let's return.
     return 0;
 };
 
@@ -65,25 +59,33 @@ static void after_read(uv_stream_t *handle,
                        const uv_buf_t *buf)
 {
 
-    printf("after reading\n");
-
-    uv_shutdown_t *sreq;
-
-    // nothing to read if 0 or EOF if < 0
     if (nread <= 0)
     {
         free(buf->base);
         return;
     }
 
-    parser->owner = buf->base;
+    milo_response *res = (milo_response *)malloc(sizeof(milo_response));
+    res->base = buf->base;
+
+    parser->owner = res;
     parser->callbacks.on_method = on_method;
     parser->callbacks.on_header_value = on_header_value;
     parser->callbacks.on_header_name = on_header_name;
 
-    uintptr_t r = milo::milo_parse(parser, (const unsigned char *)buf->base, nread);
+    milo::milo_parse(parser, (const unsigned char *)buf->base, nread);
 
-    assert(r > 0);
+    printf("Method:%s\n", res->method);
+
+    for (const auto &str : res->header_names)
+    {
+        printf("Header name: %s\n", str.c_str());
+    }
+
+    for (const auto &str : res->header_values)
+    {
+        printf("Header value: %s\n", str.c_str());
+    }
 }
 
 // we have to allocate manually all chunks of data we receive
@@ -98,8 +100,6 @@ static void allocator(uv_handle_t *handle,
 static void on_connection(uv_stream_t *server, int status)
 {
 
-    printf("on connection\n");
-
     if (status < 0)
     {
         fprintf(stderr, "listen error: %s\n", uv_strerror(status));
@@ -113,8 +113,6 @@ static void on_connection(uv_stream_t *server, int status)
 
     assert(uv_accept(server, (uv_stream_t *)client) == 0);
 
-    printf("connection accepted\n");
-
     uv_read_start((uv_stream_t *)client, allocator, after_read);
 }
 
@@ -124,9 +122,9 @@ int main()
     loop = uv_default_loop();
     parser = milo::milo_create();
     uv_tcp_init(loop, &tcpServer);
+    printf("Starting on %s:%d\n", HOST, PORT);
     uv_ip4_addr(HOST, PORT, &address);
     uv_tcp_bind(&tcpServer, (const struct sockaddr *)&address, 0);
-
     uv_listen((uv_stream_t *)&tcpServer, BACKLOG, on_connection);
     uv_run(loop, UV_RUN_DEFAULT);
 }
