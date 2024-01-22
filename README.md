@@ -1,7 +1,10 @@
 ### libuv-http-server
 
-Small http server with libuv and milo bind with node
-Rust is required.
+Small http server with libuv and milo bind with node.
+
+Requirements: Rust, Node 20, GCC
+
+
 To compile milo:
 
 - `cargo install wasm-pack`
