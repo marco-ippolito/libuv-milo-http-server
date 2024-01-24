@@ -1,5 +1,0 @@
-**/target
-**/dist
-references/**/dist
-references/**/build
-references/**/lib
