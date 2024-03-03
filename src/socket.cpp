@@ -66,7 +66,7 @@ inline void emit_uv_error(Napi::Function callback, int result)
     Napi::Env env = callback.Env();
     Napi::Object err = Napi::Object::New(env);
     err.Set("code", Napi::String::New(env, uv_err_name(result)));
-    callback.MakeCallback(env.Global(), {NULL, NULL, err});
+    callback.MakeCallback(env.Global(), {env.Undefined(), env.Undefined(), err});
 }
 
 void after_write(uv_write_t *req, int status)
@@ -102,7 +102,7 @@ static void after_read(uv_stream_t *client,
     Napi::Object response = Napi::Object::New(env);
     response.Set("write", Napi::Function::New(env, write, "write", client));
 
-    client_data->callback.MakeCallback(env.Global(), {request, response, NULL});
+    client_data->callback.MakeCallback(env.Global(), {request, response, env.Undefined()});
     free(buf->base);
 }
 
