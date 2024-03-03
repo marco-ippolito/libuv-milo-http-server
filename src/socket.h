@@ -19,6 +19,6 @@ private:
 
 struct server_data
 {
-    Napi::FunctionReference emit;
+    Napi::FunctionReference callback;
     uv_loop_t *eventLoop;
 };

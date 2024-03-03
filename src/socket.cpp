@@ -61,12 +61,12 @@ static void allocator(uv_handle_t *handle,
     buf->len = suggested_size;
 }
 
-inline void emit_uv_error(Napi::Function emit, int result)
+inline void emit_uv_error(Napi::Function callback, int result)
 {
-    Napi::Env env = emit.Env();
-    Napi::Object payload = Napi::Object::New(env);
-    payload.Set("code", Napi::String::New(env, uv_err_name(result)));
-    emit.MakeCallback(env.Global(), {Napi::String::New(env, "data"), payload});
+    Napi::Env env = callback.Env();
+    Napi::Object err = Napi::Object::New(env);
+    err.Set("code", Napi::String::New(env, uv_err_name(result)));
+    callback.MakeCallback(env.Global(), {NULL, NULL, err});
 }
 
 void after_write(uv_write_t *req, int status)
@@ -95,12 +95,14 @@ static void after_read(uv_stream_t *client,
         return;
     }
     server_data *client_data = (server_data *)(client->data);
-    Napi::Env env = client_data->emit.Env();
+    Napi::Env env = client_data->callback.Env();
     Napi::HandleScope scope(env);
+    Napi::Object request = Napi::Object::New(env);
+    request.Set("data", Napi::String::New(env, buf->base, nread));
     Napi::Object response = Napi::Object::New(env);
-    response.Set("data", Napi::String::New(env, buf->base, nread));
     response.Set("write", Napi::Function::New(env, write, "write", client));
-    client_data->emit.MakeCallback(env.Global(), {Napi::String::New(env, "data"), response});
+
+    client_data->callback.MakeCallback(env.Global(), {request, response, NULL});
     free(buf->base);
 }
 
@@ -114,24 +116,24 @@ static void on_connection(uv_stream_t *tcpServer, int status)
     result = uv_tcp_init(eventLoop, client);
     if (result != 0)
     {
-        Napi::HandleScope scope(serverData->emit.Env());
-        emit_uv_error(serverData->emit.Value(), result);
+        Napi::HandleScope scope(serverData->callback.Env());
+        emit_uv_error(serverData->callback.Value(), result);
         uv_close((uv_handle_t *)client, on_close);
     }
 
     result = uv_accept(tcpServer, (uv_stream_t *)client);
     if (result != 0)
     {
-        Napi::HandleScope scope(serverData->emit.Env());
-        emit_uv_error(serverData->emit.Value(), result);
+        Napi::HandleScope scope(serverData->callback.Env());
+        emit_uv_error(serverData->callback.Value(), result);
         uv_close((uv_handle_t *)client, on_close);
     }
 
     result = uv_read_start((uv_stream_t *)client, allocator, after_read);
     if (result != 0)
     {
-        Napi::HandleScope scope(serverData->emit.Env());
-        emit_uv_error(serverData->emit.Value(), result);
+        Napi::HandleScope scope(serverData->callback.Env());
+        emit_uv_error(serverData->callback.Value(), result);
         uv_close((uv_handle_t *)client, on_close);
     }
 }
@@ -142,13 +144,13 @@ void Socket::Listen(const Napi::CallbackInfo &info)
     uv_loop_t *eventLoop;
     napi_status status = napi_get_uv_event_loop(env, &eventLoop);
     NAPI_THROW_IF_FAILED(env, status);
-    Napi::Function emit = info[0].As<Napi::Function>();
+    Napi::Function callback = info[0].As<Napi::Function>();
 
     int result = 0;
     result = uv_tcp_init(eventLoop, &this->tcpServer);
     if (result != 0)
     {
-        emit_uv_error(emit, result);
+        emit_uv_error(callback, result);
         return;
     }
 
@@ -156,26 +158,26 @@ void Socket::Listen(const Napi::CallbackInfo &info)
     result = uv_ip4_addr(this->_hostname.c_str(), (int)(this->_port), &address);
     if (result != 0)
     {
-        emit_uv_error(emit, result);
+        emit_uv_error(callback, result);
         return;
     }
 
     result = uv_tcp_bind(&this->tcpServer, (const struct sockaddr *)&address, 0);
     if (result != 0)
     {
-        emit_uv_error(emit, result);
+        emit_uv_error(callback, result);
         return;
     }
 
     server_data *serverData = (server_data *)malloc(sizeof(server_data));
-    serverData->emit = Napi::Persistent(info[0].As<Napi::Function>());
+    serverData->callback = Napi::Persistent(info[0].As<Napi::Function>());
     serverData->eventLoop = eventLoop;
     this->tcpServer.data = serverData;
 
     result = uv_listen((uv_stream_t *)&this->tcpServer, BACKLOG, on_connection);
     if (result != 0)
     {
-        emit_uv_error(emit, result);
+        emit_uv_error(callback, result);
         free(tcpServer.data);
         free(serverData);
         return;
