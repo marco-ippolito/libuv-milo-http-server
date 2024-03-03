@@ -1,42 +1,42 @@
 #include <napi.h>
 #include <uv.h>
-#include "socket.h"
+#include "inbound_tcp_socket.h"
 
 #define BACKLOG 511
 
-Napi::Object Socket::Init(Napi::Env env, Napi::Object exports)
+Napi::Object InboundTCPSocket::Init(Napi::Env env, Napi::Object exports)
 {
     Napi::Function func =
         DefineClass(env,
-                    "Socket",
-                    {Socket::InstanceMethod("listen", &Socket::Listen),
-                     Socket::InstanceMethod("close", &Socket::Close),
-                     Socket::InstanceAccessor("port", &Socket::GetPort, nullptr),
-                     Socket::InstanceAccessor("hostname", &Socket::GetHostname, nullptr)});
+                    "InboundTCPSocket",
+                    {InboundTCPSocket::InstanceMethod("listen", &InboundTCPSocket::Listen),
+                     InboundTCPSocket::InstanceMethod("close", &InboundTCPSocket::Close),
+                     InboundTCPSocket::InstanceAccessor("port", &InboundTCPSocket::GetPort, nullptr),
+                     InboundTCPSocket::InstanceAccessor("hostname", &InboundTCPSocket::GetHostname, nullptr)});
 
     Napi::FunctionReference *constructor = new Napi::FunctionReference();
     *constructor = Napi::Persistent(func);
     env.SetInstanceData(constructor);
 
-    Napi::String name = Napi::String::New(env, "Socket");
+    Napi::String name = Napi::String::New(env, "InboundTCPSocket");
     exports.Set(name, func);
     return exports;
 }
 
-Napi::Value Socket::GetPort(const Napi::CallbackInfo &info)
+Napi::Value InboundTCPSocket::GetPort(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
     return Napi::Number::New(env, (double)(this->_port));
 }
 
-Napi::Value Socket::GetHostname(const Napi::CallbackInfo &info)
+Napi::Value InboundTCPSocket::GetHostname(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
     return Napi::String::New(env, this->_hostname);
 }
 
-Socket::Socket(const Napi::CallbackInfo &info)
-    : Napi::ObjectWrap<Socket>(info)
+InboundTCPSocket::InboundTCPSocket(const Napi::CallbackInfo &info)
+    : Napi::ObjectWrap<InboundTCPSocket>(info)
 {
     Napi::Object options = info[0].As<Napi::Object>();
     this->_port = options.Get("port").As<Napi::Number>().Uint32Value();
@@ -48,7 +48,7 @@ void on_close(uv_handle_t *handle)
     free(handle);
 }
 
-void Socket::Close(const Napi::CallbackInfo &info)
+void InboundTCPSocket::Close(const Napi::CallbackInfo &info)
 {
     uv_close((uv_handle_t *)&this->tcpServer, NULL);
 }
@@ -138,7 +138,7 @@ static void on_connection(uv_stream_t *tcpServer, int status)
     }
 }
 
-void Socket::Listen(const Napi::CallbackInfo &info)
+void InboundTCPSocket::Listen(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
     uv_loop_t *eventLoop;

@@ -1,5 +1,5 @@
 {
-    "name": "http-server-addon",
+    "name": "libuv-milo-http-server",
     "version": "0.0.1",
     "description": "",
     "main": "lib/socket.js",
