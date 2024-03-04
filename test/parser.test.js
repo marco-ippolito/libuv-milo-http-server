@@ -14,12 +14,12 @@ test('Milo parsing http response', () => {
 
     const parser = load();
     parser.parse(request, request.length);
-    assert.strictEqual(parser.context.protocol, protocol);
-    assert.strictEqual(parser.context.version, version);
-    assert.strictEqual(parser.context.status, status);
-    assert.strictEqual(parser.context["Content-Type"], contentType);
-    assert.strictEqual(parser.context["Content-Length"], contentLength);
-    assert.strictEqual(parser.context.data, body);
+    assert.strictEqual(parser.context.parsed.protocol, protocol);
+    assert.strictEqual(parser.context.parsed.version, version);
+    assert.strictEqual(parser.context.parsed.status, status);
+    assert.strictEqual(parser.context.parsed.headers["Content-Type"], contentType);
+    assert.strictEqual(parser.context.parsed.headers["Content-Length"], contentLength);
+    assert.strictEqual(parser.context.parsed.data, body);
 });
 
 test('Milo parsing http request', () => {
@@ -31,8 +31,8 @@ test('Milo parsing http request', () => {
 
     const parser = load();
     parser.parse(request, request.length);
-    assert.strictEqual(parser.context.method, method);
-    assert.strictEqual(parser.context.url, url);
-    assert.strictEqual(parser.context.protocol, protocol);
-    assert.strictEqual(parser.context.version, version);
+    assert.strictEqual(parser.context.parsed.method, method);
+    assert.strictEqual(parser.context.parsed.url, url);
+    assert.strictEqual(parser.context.parsed.protocol, protocol);
+    assert.strictEqual(parser.context.parsed.version, version);
 });
