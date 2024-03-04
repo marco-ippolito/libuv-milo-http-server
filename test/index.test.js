@@ -9,10 +9,10 @@ test('InboundSocket', async () => {
         assert.ok(req.data.includes(body));
         const http_response = `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 15\r\n\r\n${body}`;
         res.write(http_response);
-        socket.close();
     });
 
     const res = await fetch("http://localhost:8000", { method: 'POST', body });
     const text = await res.text();
     assert.deepStrictEqual(text, body);
+    socket.close();
 });

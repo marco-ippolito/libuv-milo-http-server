@@ -14,7 +14,6 @@ test('Milo parsing http response', () => {
 
     const parser = load();
     parser.parse(request, request.length);
-    console.log(parser.context)
     assert.strictEqual(parser.context.protocol, protocol);
     assert.strictEqual(parser.context.version, version);
     assert.strictEqual(parser.context.status, status);
@@ -32,7 +31,6 @@ test('Milo parsing http request', () => {
 
     const parser = load();
     parser.parse(request, request.length);
-    console.log(parser.context)
     assert.strictEqual(parser.context.method, method);
     assert.strictEqual(parser.context.url, url);
     assert.strictEqual(parser.context.protocol, protocol);
