@@ -98,7 +98,7 @@ static void after_read(uv_stream_t *client,
     Napi::Env env = client_data->callback.Env();
     Napi::HandleScope scope(env);
     Napi::Object request = Napi::Object::New(env);
-    request.Set("data", Napi::String::New(env, buf->base, nread));
+    request.Set("data", Napi::Buffer<char>::NewOrCopy(env, buf->base, nread));
     Napi::Object response = Napi::Object::New(env);
     response.Set("write", Napi::Function::New(env, write, "write", client));
 
