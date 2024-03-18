@@ -6,13 +6,11 @@ import { Response } from '../lib/response.js';
 test('HttpServer', async () => {
     const body = "Hello, World!\r\n";
     const server = new HttpServer({ hostname: "0.0.0.0", port: 8001 });
-    server.listen((req, err) => {
+    server.listen(async (req, err) => {
         assert.deepStrictEqual(req.method, "POST");
-        assert.deepStrictEqual(req.url, "/");
-        assert.deepStrictEqual(req.protocol, "HTTP");
-        assert.deepStrictEqual(req.version, "1.1");
-        assert.deepStrictEqual(req.headers["content-length"], "15");
-        assert.deepStrictEqual(req.body, body);
+        assert.deepStrictEqual(req.url, "http://0.0.0.0:8001/");
+        assert.deepStrictEqual(req.headers.get("content-length"), "15");
+        assert.deepStrictEqual((await req.text()), body);
         return new Response(body, { status: 200, reason: "OK", headers: { "Content-Type": "text/plain", "Content-Length": "15" } });
     });
 
