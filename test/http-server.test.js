@@ -1,7 +1,6 @@
 import { HttpServer } from '../lib/http-server.js';
 import { test } from 'node:test';
 import assert from 'node:assert';
-import { Response } from '../lib/response.js';
 
 test('HttpServer', async () => {
     const body = "Hello, World!\r\n";
